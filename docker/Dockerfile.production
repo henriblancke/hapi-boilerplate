@@ -1,0 +1,56 @@
+FROM node:13-alpine3.10 AS build
+
+ENV WORKDIR /usr/src/app
+ENV YARN_VERSION 1.22.10
+
+WORKDIR ${WORKDIR}
+
+RUN apk --no-cache --update upgrade && \
+    apk add --no-cache --update \
+        ca-certificates \
+        curl && \
+    curl -fSLO --compressed "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz" && \
+    tar -xzf yarn-v$YARN_VERSION.tar.gz -C /opt/ && \
+    ln -snf /opt/yarn-v$YARN_VERSION/bin/yarn /usr/local/bin/yarn && \
+    ln -snf /opt/yarn-v$YARN_VERSION/bin/yarnpkg /usr/local/bin/yarnpkg &&\
+    rm yarn-v$YARN_VERSION.tar.gz  && \
+    yarn config set registry https://registry.npmjs.org/
+
+COPY . .
+
+RUN yarn && \
+    yarn build
+
+# clean up dev dependencies after build
+RUN yarn install --production --ignore-scripts --prefer-offline
+
+FROM node:13-alpine3.10
+
+ARG VERSION
+ARG GIT_COMMIT
+LABEL VERSION=$VERSION
+LABEL GIT_COMMIT=$GIT_COMMIT
+
+ENV USER=1000
+ENV PORT=9000
+ENV TZ=America/New_York
+ENV WORKDIR=/usr/src/app
+
+WORKDIR ${WORKDIR}
+
+# random root password for security
+RUN apk --no-cache add tzdata dumb-init \
+    && cp /usr/share/zoneinfo/${TZ} /etc/localtime \
+    && echo ${TZ} > /etc/timezone \
+    && echo "root:"`< /dev/urandom tr -dc _A-Z-a-z-0-9!@#$%\&\^\(\) | head -c${1:-32};echo;` | chpasswd
+
+COPY --from=build ${WORKDIR}/dist ./dist
+COPY --from=build ${WORKDIR}/package.json .
+COPY --from=build ${WORKDIR}/.env.example .
+COPY --from=build ${WORKDIR}/node_modules ./node_modules
+
+RUN chown -R ${USER}:${USER} ${WORKDIR}
+USER ${USER}
+
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "dist/index.js"]

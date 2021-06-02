@@ -45,12 +45,12 @@ make build
 
 Run the project. This will spin up a pg database and run the project locally in docker with live reload enabled for easy development.
 ```bash
-make run
+make start
 ```
 
 To shutdown:
 ```bash
-make down
+make stop
 ```
 
 Multi stage build for a leaner prod image 
