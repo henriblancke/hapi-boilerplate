@@ -1,4 +1,4 @@
-# backend
+# hapi-boilerplate
 
 ### Technologies
 
@@ -24,7 +24,7 @@
 # builds the docker image
 make build
 # starts the server and runs migrations
-make run
+make start
 ```
 
 ### Access the API documentation
@@ -70,7 +70,7 @@ Some handy commands:
 
 ## Generate JWT keys
 ```
-mkdir .certs
+mkdir .certs && cd .certs
 # ES512
 # private key
 openssl ecparam -genkey -name secp521r1 -noout -out api-jwt-private.pem
